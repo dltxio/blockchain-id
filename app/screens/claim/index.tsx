@@ -1,5 +1,5 @@
 ﻿﻿import React, { useEffect } from "react";
-import { Text, View, Platform, Image } from "react-native";
+import { Text, View, Platform, Image, Alert } from "react-native";
 import styles from "../../styles";
 import EmailClaim from "./EmailClaim";
 import { useRootStore } from "../../store/rootStore";
@@ -12,6 +12,8 @@ import * as ImagePicker from "expo-image-picker";
 import * as DocumentPicker from "expo-document-picker";
 import * as Crypto from "expo-crypto";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import idem from "../../apis/gpib";
+import sites from "../../assets/sites.json";
 
 const Claim = () => {
   useEffect(() => {
@@ -33,6 +35,27 @@ const Claim = () => {
     base64Url: result.uri
   });
 
+  const parseVerifyValues = (email: any, phoneNumber: any) => ({
+      "signature": "0x00",
+      "timeStamp": new Date(),
+      "claims": [
+        {
+          "subject": {
+            "type": "email",
+            "value": email
+          },
+
+        },
+        {
+          "subject": {
+            "type": "phoneNumber",
+            "value": phoneNumber
+          },
+
+        }
+      ]
+  });
+
   const uploadFileFromBrowser = async () => {
     try {
       const libraryUrl = await AsyncStorage.getItem("library_url");
@@ -41,6 +64,34 @@ const Claim = () => {
         if (result.type === "success") {
           await AsyncStorage.setItem("document_url", JSON.stringify(await getData(result)));
         }
+        // Just for demo purpose, we are calling fake account verify endpoint //
+
+        const value = sites.find((c => c.key === "1x00"))
+        const claimsNameObject = assetStore.claims.find((c => c.key === "0x02"))
+        const claimsEmailObject = assetStore.claims.find((c => c.key === "0x03"))
+        const claimsMobileObject = assetStore.claims.find((c => c.key === "0x04"))
+        const email = value?.claims![0].email === claimsEmailObject?.verify ? claimsEmailObject?.value : '';
+        const phoneNumber = value?.claims![0].phoneNumber === claimsMobileObject?.verify ? claimsEmailObject?.value : '';
+
+        const parsedValues = parseVerifyValues(email, phoneNumber);
+        await idem.open.post(value?.registration!, parsedValues).then((res: any) => {
+          if(res.status) {
+            Alert.alert(
+              "Title",
+              "Account verify successfully",
+              [
+                {
+                  text: "Cancel",
+                  onPress: () => console.log("Cancel Pressed"),
+                  style: "cancel"
+                },
+                { text: "OK", onPress: () => console.log("OK Pressed") }
+              ],
+              { cancelable: false }
+            );
+          }
+        });
+      // end function //
       } else {
         // TODO waiting for message
         alert('You have already selected one document');
@@ -95,7 +146,7 @@ const Claim = () => {
 
   const rootStore = useRootStore();
   const claim = rootStore.Assets.selectedClaim;
-
+  const assetStore = rootStore.Assets;
   if (!claim) {
     return <View>{/* TODO: error handling for this case */}</View>;
   }

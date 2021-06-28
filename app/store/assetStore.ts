@@ -8,6 +8,7 @@ export const Claim = types
     type: types.string,
     description: types.string,
     value: types.maybe(types.string),
+    verify: false,
     verifiedBy: types.array(types.string),
   })
   .views((self) => ({
@@ -24,6 +25,7 @@ export const Claim = types
       );
       let claimData = JSON.parse(claimDataString || "{}");
       claimData.value = value;
+      claimData.verify = true;
       yield AsyncStorage.setItem(self.key, JSON.stringify(claimData));
     }),
   }));
